@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Feelings</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap');
+  *{box-sizing:border-box;font-family:'Baloo 2',cursive}
+  body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px;transition:background 0.5s;background:#ffb3c8}
+  h1{color:white;font-size:32px;margin:10px 0 5px;text-shadow:1px 2px 0 rgba(0,0,0,0.15)}
+  .top-nav{display:flex;gap:10px;margin-bottom:10px}
+  .top-nav button{background:white;border:none;padding:8px 16px;border-radius:20px;font-weight:700;cursor:pointer}
+  .top-nav button.active{background:#333;color:white}
+  .card{background:rgba(255,255,255,0.25);backdrop-filter:blur(5px);border-radius:20px;padding:20px;width:100%;max-width:760px}
+  .moods{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:15px 0}
+  .mood{background:#d94f7a;color:white;border:none;border-radius:12px;padding:10px 6px;width:80px;cursor:pointer;font-size:13px;line-height:1.2}
+  .mood span{font-size:28px;display:block}
+  .mood.active{background:white;color:#333;transform:scale(1.08);outline:3px solid white}
+  .boxes{display:flex;gap:15px;flex-wrap:wrap}
+  .box{flex:1;min-width:280px}
+  .box label{color:white;font-weight:700;display:block;margin-bottom:6px}
+  .box textarea{width:100%;height:90px;border:none;border-radius:12px;padding:12px;resize:none;outline:none;font-size:15px}
+  button.save{margin:20px auto 0;display:block;background:white;border:none;padding:12px 24px;border-radius:20px;font-weight:800;cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,0.15)}
+  .section{display:none;width:100%;max-width:760px}
+  .section.show{display:block}
+  .white-box{background:white;border-radius:20px;padding:18px;margin-top:15px}
+  /* Calendar */
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center}
+  .cal-day{background:#fff0f4;border-radius:10px;padding:10px 2px;min-height:62px;font-size:12px}
+  .cal-day.today{outline:3px solid #333}
+  .cal-day b{font-size:20px;display:block}
+  .cal-head{font-weight:800;font-size:12px;padding:6px}
+  /* Chart */
+  .chart{display:flex;align-items:flex-end;gap:10px;height:180px;padding:10px;border-bottom:2px solid #eee;justify-content:space-between}
+  .bar-wrap{flex:1;text-align:center}
+  .bar{border-radius:10px 10px 0 0;margin:0 auto;width:100%;max-width:45px;display:flex;align-items:flex-start;justify-content:center;font-size:22px;padding-top:6px;color:white;font-weight:800;transition:0.4s}
+  .bar-label{font-size:12px;margin-top:6px;font-weight:700}
+  .entry{border-bottom:1px solid #ffe0ea;padding:10px 0}
+  .entry b{color:#d94f7a}
+</style>
+</head>
+<body id="body">
+  <h1>How I feel today ?</h1>
+  <div class="top-nav">
+    <button id="btn-today" class="active" onclick="showTab('today')">Today</button>
+    <button id="btn-cal" onclick="showTab('cal')">Calendar</button>
+    <button id="btn-week" onclick="showTab('week')">Week Chart</button>
+  </div>
+
+  <!-- TODAY -->
+  <div id="tab-today" class="section show">
+    <div class="card">
+      <div class="moods" id="moods"></div>
+      <div class="boxes">
+        <div class="box"><label>What made me feel that way ?</label><textarea id="reason" placeholder="Type here..."></textarea></div>
+        <div class="box"><label>What I wish for myself tomorrow ?</label><textarea id="wish" placeholder="Type here..."></textarea></div>
+      </div>
+      <button class="save" onclick="saveToday()">Save for today</button>
+    </div>
+    <div class="white-box" id="history"></div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div id="tab-cal" class="section">
+    <div class="white-box">
+      <h3 style="margin:0 0 5px" id="cal-title">Calendar</h3>
+      <p style="margin:0 0 12px;color:#888;font-size:13px">Tap a day to see what you felt</p>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div id="cal-detail" style="margin-top:15px;background:#fff0f4;padding:12px;border-radius:12px"></div>
+    </div>
+  </div>
+
+  <!-- WEEK CHART -->
+  <div id="tab-week" class="section">
+    <div class="white-box">
+      <h3 style="margin:0">My Week</h3>
+      <p style="color:#888;font-size:13px;margin:5px 0 15px">How strong your feelings were this week (1 = low, 5 = high)</p>
+      <div class="chart" id="chart"></div>
+      <div id="week-list" style="margin-top:15px"></div>
+    </div>
+  </div>
+
+<script>
+const moods = [
+  {name:'Happy', emoji:'😊', color:'#FFD93D', bg:'#FFE45E', text:'#7A5A00'},
+  {name:'Loved', emoji:'🥰', color:'#FF6FA5', bg:'#FFB3C8', text:'#8A0040'},
+  {name:'Confident', emoji:'😎', color:'#4EA8FF', bg:'#A8D8FF', text:'#003A7A'},
+  {name:'Playful', emoji:'😜', color:'#FF9F45', bg:'#FFD1A3', text:'#7A3A00'},
+  {name:'Embarrassed', emoji:'🫣', color:'#6BCB77', bg:'#B8E9C0', text:'#0B5A1E'},
+  {name:'Angry', emoji:'😡', color:'#FF4D4D', bg:'#FF9E9E', text:'#7A0000'},
+  {name:'Scared', emoji:'😨', color:'#9B5DE5', bg:'#D3B8F5', text:'#3A0066'},
+  {name:'Sad', emoji:'😢', color:'#5E8BFF', bg:'#AECBFF', text:'#0A2A7A'},
+];
+let selected = null;
+const container = document.getElementById('moods');
+moods.forEach((m,i)=>{
+  const btn=document.createElement('button');
+  btn.className='mood'; btn.style.background=m.color;
+  btn.innerHTML=`<span>${m.emoji}</span>${m.name}`;
+  btn.onclick=()=>{
+    selected=m;
+    document.querySelectorAll('.mood').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    // CHANGE BACKGROUND
+    document.getElementById('body').style.background=m.bg;
+  };
+  container.appendChild(btn);
+});
+
+function getData(){ return JSON.parse(localStorage.getItem('feelings2')||'[]'); }
+function setData(d){ localStorage.setItem('feelings2', JSON.stringify(d)); }
+
+function saveToday(){
+  if(!selected){ alert('Pick a feeling first!'); return; }
+  const reason=document.getElementById('reason').value;
+  const wish=document.getElementById('wish').value;
+  const today=new Date(); const key=today.toISOString().slice(0,10);
+  let data=getData().filter(e=>e.key!==key);
+  data.unshift({key, date:today.toLocaleDateString('en-ZA',{weekday:'short',day:'numeric',month:'short'}), mood:selected.name, emoji:selected.emoji, color:selected.color, reason, wish, score: 3});
+  setData(data);
+  document.getElementById('reason').value=''; document.getElementById('wish').value='';
+  showHistory(); renderCalendar(); renderWeek();
+  alert('Saved! 💖');
+}
+
+function showHistory(){
+  const data=getData();
+  const h=document.getElementById('history');
+  if(!data.length){ h.innerHTML='<p style="text-align:center;color:#999">No entries yet.</p>'; return; }
+  h.innerHTML='<h3 style="margin:0 0 10px">My Past Feelings</h3>'+data.map(d=>`
+    <div class="entry"><span style="font-size:11px;color:#999">${d.date}</span><br><b>${d.emoji} ${d.mood}</b><div>Because: ${d.reason||'-'}</div><div>Wish: ${d.wish||'-'}</div></div>`).join('');
+}
+
+function showTab(t){
+  ['today','cal','week'].forEach(x=>{
+    document.getElementById('tab-'+x).classList.toggle('show', x===t);
+    document.getElementById('btn-'+x).classList.toggle('active', x===t);
+  });
+  if(t==='cal') renderCalendar();
+  if(t==='week') renderWeek();
+}
+
+function renderCalendar(){
+  const now=new Date(); const year=now.getFullYear(), month=now.getMonth();
+  document.getElementById('cal-title').textContent = now.toLocaleDateString('en-ZA',{month:'long',year:'numeric'});
+  const data=getData();
+  const first=new Date(year,month,1).getDay();
+  const days=new Date(year,month+1,0).getDate();
+  const grid=document.getElementById('cal-grid');
+  let html=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div class="cal-head">${d}</div>`).join('');
+  for(let i=0;i<first;i++) html+='<div></div>';
+  for(let d=1;d<=days;d++){
+    const key=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const found=data.find(e=>e.key===key);
+    const isToday = d===now.getDate();
+    html+=`<div class="cal-day ${isToday?'today':''}" style="${found?`background:${found.color}22;border:2px solid ${found.color}`:''}" onclick="showDay('${key}')">
+      ${d} ${found?`<b>${found.emoji}</b><div>${found.mood}</div>`:'<div style="color:#ccc">-</div>'}
+    </div>`;
+  }
+  grid.innerHTML=html;
+  document.getElementById('cal-detail').innerHTML='Tap any day with an emoji to see details.';
+}
+function showDay(key){
+  const found=getData().find(e=>e.key===key);
+  const el=document.getElementById('cal-detail');
+  if(!found){ el.innerHTML='No feeling saved for that day yet.'; return; }
+  el.innerHTML=`<b>${found.emoji} ${found.mood} - ${found.date}</b><br>Because: ${found.reason||'-'}<br>Wish: ${found.wish||'-'}`;
+  document.getElementById('body').style.background = moods.find(m=>m.name===found.mood)?.bg || '#FFB3C8';
+}
+
+function renderWeek(){
+  const data=getData();
+  const chart=document.getElementById('chart');
+  const days=[];
+  for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); days.push(d); }
+  chart.innerHTML=days.map(d=>{
+    const key=d.toISOString().slice(0,10);
+    const found=data.find(e=>e.key===key);
+    const height=found? 120 : 20;
+    const bg=found? found.color : '#eee';
+    return `<div class="bar-wrap"><div class="bar" style="height:${height}px;background:${bg}">${found?found.emoji:'·'}</div><div class="bar-label">${d.toLocaleDateString('en-ZA',{weekday:'short'})}<br>${found?found.mood:'No entry'}</div></div>`;
+  }).join('');
+  document.getElementById('week-list').innerHTML = data.slice(0,7).map(d=>`<div class="entry"><b>${d.emoji} ${d.mood}</b> - ${d.date} - ${d.reason||''}</div>`).join('') || 'No entries this week yet.';
+}
+
+showHistory(); renderCalendar(); renderWeek();
+</script>
+</body>
+</html>
